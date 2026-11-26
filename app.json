@@ -25,7 +25,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Usamos la cámara solo para leer el código QR de asistencia. No se toman fotos ni video.",
+          "cameraPermission": "Usamos la cámara solo para leer el código QR de las entradas de la Feria. No se toman fotos ni video.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }

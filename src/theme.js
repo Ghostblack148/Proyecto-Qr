@@ -15,12 +15,9 @@ export const colores = {
 
 // Color de fondo para cada estado de respuesta
 export const colorEstado = {
-  REGISTRADO: '#dcfce7',
-  DUPLICADO: '#fef3c7',
-  EXPIRADO: '#fee2e2',
-  VENCIDO: '#fef3c7',
+  VALIDO: '#dcfce7',
+  YA_USADO: '#fef3c7',
   INVALIDO: '#fee2e2',
-  SIN_CONEXION: '#fee2e2',
   ERROR: '#fee2e2',
 };
 

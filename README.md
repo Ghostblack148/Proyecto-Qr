@@ -1,62 +1,60 @@
-# Control de Asistencia por QR — T01
+# Validador de Entradas QR — Feria Tecnológica UTEM (T13)
 
-Aplicación móvil en **React Native con Expo** para que el docente genere un código QR en pantalla y los alumnos marquen asistencia escaneándolo con su teléfono, dentro de una ventana de tiempo acotada. Incluye un servidor local en Node.js sin dependencias externas.
+Aplicación móvil en **React Native con Expo** para validar entradas leyendo su código QR en el acceso de un evento universitario (Feria Tecnológica y Proyectos de Ingeniería — UTEM). Implementa el **flujo completo del permiso de cámara** con explicación previa y una **ruta alternativa sin cámara** (ingreso manual del código), de modo que la app sigue siendo útil aunque el permiso se rechace.
 
-Trabajo de la Unidad 3 · Desarrollo de Aplicaciones Móviles y Web · UTEM.
+Tema **T13 · Flujo de permisos bien construido** · Unidad 3 · Desarrollo de Aplicaciones Móviles y Web · UTEM.
+
+> **Datos de prueba:** todos los códigos son ficticios (`UTEM-2026-001` a `UTEM-2026-005`). No contienen datos personales y la app no guarda fotos ni video.
 
 ---
 
-## Qué hace
+## Flujo del permiso de cámara
 
-| Rol | Funcionalidad |
+| Camino | Qué ve el usuario |
 | :--- | :--- |
-| Docente | Crea una sesión con ventana de 1, 3, 5 o 10 minutos, muestra el QR, ve la lista de asistentes en vivo y exporta el registro en CSV |
-| Alumno | Ingresa nombre y RUT, escanea el QR o escribe el código a mano, y recibe la confirmación |
+| **Explicación previa** | Pantalla propia que dice para qué se usa la cámara y qué no se guarda, antes del diálogo del sistema |
+| **Concedido** | Se abre la cámara y valida entradas una tras otra |
+| **Denegado** (Android, primer rechazo) | Explica que puede validar escribiendo el código y permite reintentar |
+| **Rechazo definitivo** (iPhone desde el primer rechazo; Android tras dos) | Botón **Abrir ajustes** y botón para validar a mano; al volver de Ajustes la app detecta el cambio sola |
+| **Revocado con la app abierta** | El escáner lo detecta y ofrece revisar el permiso o pasar al modo manual |
 
-### Medidas de seguridad
-* **QR rotativo:** el código cambia cada 20 segundos. Una foto del QR enviada a alguien que no está en la sala deja de servir.
-* **Token imposible de adivinar:** se calcula en el servidor con HMAC-SHA256 y un secreto por sesión que nunca sale del servidor.
-* **Lista protegida:** solo el docente (con una clave que recibe al crear la sesión) puede ver el QR vigente y la lista.
-* **RUT validado** con dígito verificador en la app y en el servidor, sin repetidos en la misma sesión.
-* **Minimización (Ley 21.719):** se guarda solo nombre, RUT y hora, en memoria; todo se borra al apagar el servidor. La cámara solo lee el QR, no guarda fotos ni video.
+## Minimización de datos (Ley 21.719)
 
-### Flujo del permiso de cámara
-1. **Explicación propia** antes del diálogo del sistema (para qué se usa y qué no se guarda).
-2. **Concedido:** abre la cámara.
-3. **Denegado** (Android, primer rechazo): explica que se puede marcar escribiendo el código y permite reintentar.
-4. **Rechazo definitivo** (iPhone desde el primer rechazo): botón **Abrir ajustes**; al volver, la app detecta el cambio sola.
-5. En todos los casos la app sigue siendo útil: el código de 8 caracteres bajo el QR se puede escribir a mano.
+| Dato | ¿Se guarda? | Finalidad |
+| :--- | :--- | :--- |
+| Imagen de la cámara | No. Se procesa en el teléfono y se descarta | Leer el QR |
+| Código de la entrada | Solo si ya se usó, en memoria | Impedir que una entrada se use dos veces |
+| Nombre, RUT, correo | No se piden | No son necesarios para validar una entrada |
+
+Todo se borra al cerrar la app.
 
 ---
 
 ## Arquitectura
 
 ```text
-├── App.js                          # Navegación (native-stack) y proveedor de estado
-├── server/
-│   └── index.js                    # Servidor local: sesiones, QR rotativo, registro
+├── App.js                           # Navegación (native-stack) y proveedor de estado
 └── src/
-    ├── context/AppContext.js       # Estado compartido: URL del servidor y mediciones
-    ├── hooks/usePermisoCamara.js   # Estados del permiso + abrir Ajustes + AppState
-    ├── services/asistenciaService.js  # Único archivo con fetch: r.ok, timeout, errores
-    ├── utils/rut.js                # Validación de RUT (compartida con el servidor)
-    ├── theme.js                    # Colores y estilos comunes
+    ├── context/AppContext.js        # Estado compartido: mediciones
+    ├── hooks/usePermisoCamara.js    # Estados del permiso + abrir Ajustes + AppState
+    ├── services/validacionService.js # Servicio único de validación (VALIDO, YA_USADO, INVALIDO, ERROR)
+    ├── components/Resultado.js      # Tarjeta de resultado reutilizada en escáner y manual
+    ├── theme.js                     # Colores y estilos comunes
     └── screens/
-        ├── InicioScreen.js         # Elegir rol y dirección del servidor
-        ├── DocenteScreen.js        # QR, lista en vivo, exportación
-        ├── AlumnoScreen.js         # Datos del alumno, código manual, resultado
-        ├── PermisoScreen.js        # Explicación y caminos del permiso
-        ├── EscanerScreen.js        # Cámara con anti-rebote y medición
-        └── MedicionesScreen.js     # Promedio, mínimo y máximo de las mediciones
+        ├── InicioScreen.js          # Menú y contador de entradas usadas
+        ├── PermisoScreen.js         # Explicación y caminos del permiso
+        ├── EscanerScreen.js         # Cámara con anti-rebote, onCameraReady y medición
+        ├── ManualScreen.js          # Ruta alternativa sin cámara
+        └── MedicionesScreen.js      # Promedio, mínimo y máximo
 ```
+
+No usa servidor: la validación corre en el teléfono, así que funciona sin conexión.
 
 ---
 
 ## Requisitos
-
 * **Node.js** LTS y **Git** en el computador
-* Teléfono **Android o iPhone** con **Expo Go** (versión compatible con Expo SDK 58)
-* Computador y teléfonos en la **misma red Wi-Fi**
+* Teléfono **Android o iPhone** con **Expo Go** (compatible con Expo SDK 58)
 
 ## Cómo levantarlo
 
@@ -64,40 +62,40 @@ Trabajo de la Unidad 3 · Desarrollo de Aplicaciones Móviles y Web · UTEM.
 git clone https://github.com/Ghostblack148/Proyecto-Qr.git
 cd Proyecto-Qr
 npm install
-```
-
-**Terminal 1 — servidor:**
-```bash
-node server/index.js
-```
-Anota la URL que aparece (por ejemplo `http://192.168.1.15:3000`). En Windows, si aparece el aviso del firewall, permite el acceso en **redes privadas**.
-
-**Terminal 2 — app:**
-```bash
 npx expo start
 ```
-Escanea el QR de la terminal con Expo Go (Android) o con la cámara (iPhone). En la app, escribe la URL del servidor en la pantalla de inicio.
 
-> En iPhone, acepta el permiso de **Red local** que pide Expo Go; sin él la app no llega al servidor.
+Escanea el QR de la terminal con Expo Go (Android) o con la cámara (iPhone).
 
-## Cómo probarlo
-1. En un teléfono (o en el mismo), entra como **Docente** y genera el QR.
-2. En otro teléfono, entra como **Alumno**, escribe nombre y un RUT válido (por ejemplo `11.111.111-1`) y escanea.
-3. El alumno aparece en la lista del docente en menos de 2 segundos.
-4. Prueba los errores: escanear dos veces (DUPLICADO), usar un código viejo después de 40 s (VENCIDO), esperar que cierre la ventana (EXPIRADO), apagar el servidor (SIN_CONEXION).
+> **Si el teléfono no logra abrir el proyecto** (redes de empresa o universidad que bloquean conexiones entre dispositivos): inicia sesión con `npx expo login` (cuenta gratis de Expo, la misma en Expo Go) y usa `npx expo start --tunnel`.
+
+## Códigos para probar
+
+| Código | Estado inicial | Resultado esperado |
+| :--- | :--- | :--- |
+| `UTEM-2026-001` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-002` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-003` | Ya usado | **YA USADA** desde el primer intento |
+| `UTEM-2026-004` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-005` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| Cualquier otro con formato válido | No registrado | **NO EXISTE** |
+| `ERROR-TEST` | Simulación | Falla controlada → **ERROR** |
+
+Los QR de prueba están en `entradas-prueba.html`: ábrelo en el computador y escanéalos desde la pantalla. El botón **Reiniciar entradas de prueba** devuelve todo al estado inicial.
 
 ## Medición
 La pantalla **Ver mediciones** registra automáticamente:
-* **Carga de la cámara:** desde que se toca Continuar o Escanear hasta `onCameraReady`.
-* **Registro:** desde que se lee el QR hasta que el servidor confirma.
+* **Validar escaneando:** desde que la cámara está lista hasta ver el resultado.
+* **Validar digitando:** desde la primera tecla hasta ver el resultado.
+* **Carga de la cámara:** desde que se toca Escanear o Continuar hasta `onCameraReady`.
 
-Hacer 10 repeticiones en el teléfono físico y copiar promedio, mínimo y máximo a la planilla. Las mediciones se borran al cerrar la app.
+Hacer 10 repeticiones de cada una en el teléfono físico y copiar promedio, mínimo y máximo a la planilla.
 
 ## Repetir las pruebas del permiso
 * **Android:** Ajustes → Aplicaciones → Expo Go → Permisos → Cámara
 * **iPhone:** Ajustes → Expo Go → Cámara
 
 ## Limitaciones conocidas
-* Los datos viven en la memoria del servidor: si se apaga, se pierden las sesiones.
-* Depende de que todos estén en la misma red Wi-Fi que el computador del docente.
-* Un alumno presente podría marcar por otro escribiendo un RUT ajeno; validar identidad requeriría inicio de sesión institucional.
+* Las entradas viven en la memoria de un solo teléfono: dos porteros con teléfonos distintos no comparten qué entradas ya se usaron. Resolverlo requiere un servidor compartido.
+* El código de las entradas es secuencial (`001`, `002`…), así que se podría adivinar. En producción convendría un código aleatorio o firmado.
+* En iPhone, el primer rechazo ya es definitivo, por lo que el camino "denegado, se puede reintentar" solo se puede mostrar en Android.

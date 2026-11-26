@@ -4,8 +4,9 @@ import { useApp } from '../context/AppContext';
 import { estilos } from '../theme';
 
 const TIPOS = [
-  { clave: 'camara', titulo: 'Carga de la cámara', detalle: 'Desde "Continuar" o "Escanear" hasta onCameraReady' },
-  { clave: 'registro', titulo: 'Registro de asistencia', detalle: 'Desde que se lee el QR hasta la respuesta del servidor' },
+  { clave: 'escaneo', titulo: 'Validar escaneando', detalle: 'Desde que la cámara está lista hasta ver el resultado' },
+  { clave: 'manual', titulo: 'Validar digitando', detalle: 'Desde la primera tecla hasta ver el resultado' },
+  { clave: 'camara', titulo: 'Carga de la cámara', detalle: 'Desde "Escanear entrada" o "Continuar" hasta onCameraReady' },
 ];
 
 // Estado derivado: los promedios se calculan, no se guardan
@@ -45,9 +46,7 @@ export default function MedicionesScreen() {
           </View>
         );
       })}
-      <Text style={estilos.nota}>
-        Las mediciones se borran al cerrar la app. Anótalas en la planilla antes de salir.
-      </Text>
+      <Text style={estilos.nota}>Las mediciones se borran al cerrar la app. Anótalas en la planilla antes de salir.</Text>
       <TouchableOpacity style={[estilos.boton, estilos.botonBorde]} onPress={borrarMediciones}>
         <Text style={estilos.botonBordeTexto}>Borrar mediciones</Text>
       </TouchableOpacity>
