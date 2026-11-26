@@ -8,6 +8,7 @@
     "expo": "~58.0.26",
     "expo-camera": "~58.0.14",
     "expo-file-system": "~58.0.14",
+    "expo-linking": "~58.0.17",
     "expo-sharing": "~58.0.23",
     "expo-status-bar": "~58.0.5",
     "react": "19.3.0",
@@ -23,5 +24,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.3"
+  }
 }
