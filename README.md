@@ -1,96 +1,101 @@
-# Validador de Entradas QR — Feria Tecnológica UTEM
+# Validador de Entradas QR — Feria Tecnológica UTEM (T13)
 
-Aplicación móvil desarrollada en **React Native** con **Expo** para validar entradas mediante lectura de códigos QR en el acceso de un evento universitario (Feria Tecnológica y Proyectos de Ingeniería — UTEM), con respaldo de ingreso manual y flujo explícito de permisos de cámara.
+Aplicación móvil en **React Native con Expo** para validar entradas leyendo su código QR en el acceso de un evento universitario (Feria Tecnológica y Proyectos de Ingeniería — UTEM). Implementa el **flujo completo del permiso de cámara** con explicación previa y una **ruta alternativa sin cámara** (ingreso manual del código), de modo que la app sigue siendo útil aunque el permiso se rechace.
 
-> **Nota de datos de prueba:** Todos los códigos incluidos son ficticios (`UTEM-2026-001` a `UTEM-2026-005`) y no contienen datos personales ni almacenan fotos o videos.
+Tema **T13 · Flujo de permisos bien construido** · Unidad 3 · Desarrollo de Aplicaciones Móviles y Web · UTEM.
+
+> **Datos de prueba:** todos los códigos son ficticios (`UTEM-2026-001` a `UTEM-2026-005`). No contienen datos personales y la app no guarda fotos ni video.
 
 ---
 
-## Arquitectura del proyecto
+## Flujo del permiso de cámara
 
-El código está separado por capas para aislar pantallas, servicio de validación y hook de permisos:
+| Camino | Qué ve el usuario |
+| :--- | :--- |
+| **Explicación previa** | Pantalla propia que dice para qué se usa la cámara y qué no se guarda, antes del diálogo del sistema |
+| **Concedido** | Se abre la cámara y valida entradas una tras otra |
+| **Denegado** (Android, primer rechazo) | Explica que puede validar escribiendo el código y permite reintentar |
+| **Rechazo definitivo** (iPhone desde el primer rechazo; Android tras dos) | Botón **Abrir ajustes** y botón para validar a mano; al volver de Ajustes la app detecta el cambio sola |
+| **Revocado con la app abierta** | El escáner lo detecta y ofrece revisar el permiso o pasar al modo manual |
+
+## Minimización de datos (Ley 21.719)
+
+| Dato | ¿Se guarda? | Finalidad |
+| :--- | :--- | :--- |
+| Imagen de la cámara | No. Se procesa en el teléfono y se descarta | Leer el QR |
+| Código de la entrada | Solo si ya se usó, en memoria | Impedir que una entrada se use dos veces |
+| Nombre, RUT, correo | No se piden | No son necesarios para validar una entrada |
+
+Todo se borra al cerrar la app.
+
+---
+
+## Arquitectura
 
 ```text
-├── App.js                        # Orquestador de pantallas y medición inicial de latencia
+├── App.js                           # Navegación (native-stack) y proveedor de estado
 └── src/
-    ├── hooks/
-    │   └── usePermisoCamara.js    # Solicitud de permisos (async/await + try/catch) y canAskAgain
-    ├── screens/
-    │   ├── EscanerScreen.js       # Lectura QR con CameraView, anti-rebote y onCameraReady
-    │   └── ManualScreen.js        # Validación manual y acceso a Ajustes ante rechazo definitivo
-    └── services/
-        └── validacionService.js   # Servicio único de validación (VÁLIDO, YA_USADO, INVÁLIDO, ERROR)
+    ├── context/AppContext.js        # Estado compartido: mediciones
+    ├── hooks/usePermisoCamara.js    # Estados del permiso + abrir Ajustes + AppState
+    ├── services/validacionService.js # Servicio único de validación (VALIDO, YA_USADO, INVALIDO, ERROR)
+    ├── components/Resultado.js      # Tarjeta de resultado reutilizada en escáner y manual
+    ├── theme.js                     # Colores y estilos comunes
+    └── screens/
+        ├── InicioScreen.js          # Menú y contador de entradas usadas
+        ├── PermisoScreen.js         # Explicación y caminos del permiso
+        ├── EscanerScreen.js         # Cámara con anti-rebote, onCameraReady y medición
+        ├── ManualScreen.js          # Ruta alternativa sin cámara
+        └── MedicionesScreen.js      # Promedio, mínimo y máximo
 ```
 
----
-
-## Requisitos previos
-
-### En el computador
-* **Node.js** (versión LTS compatible con la versión vigente de Expo SDK)
-* **Git** y una cuenta de **GitHub**
-* Editor de código (recomendado: **Visual Studio Code**)
-
-### En el teléfono físico (obligatorio para cámara)
-* Dispositivo **Android** o **iPhone** con **Expo Go** instalado desde la tienda oficial
-* Computador y teléfono conectados a la **misma red Wi-Fi** (o usar modo túnel si la red bloquea la conexión local)
+No usa servidor: la validación corre en el teléfono, así que funciona sin conexión.
 
 ---
 
-## Instalación y ejecución
+## Requisitos
+* **Node.js** LTS y **Git** en el computador
+* Teléfono **Android o iPhone** con **Expo Go** (compatible con Expo SDK 58)
 
-### 1. En el teléfono físico
-* Instala **Expo Go** desde Google Play Store (Android) o App Store (iPhone)
-* Conecta el teléfono a la **misma red Wi-Fi** que el computador
+## Cómo levantarlo
 
-### 2. En el computador (dentro de la carpeta del proyecto)
-Abre una terminal en la carpeta raíz del proyecto (donde está `package.json`) y ejecuta:
+```bash
+git clone https://github.com/Ghostblack148/Proyecto-Qr.git
+cd Proyecto-Qr
+npm install
+npx expo start
+```
 
-1. **Clonar el repositorio (si aún no lo tienes local):**
-   ```bash
-   git clone https://github.com/<TU_USUARIO>/Proyecto-Qr.git
-   cd Proyecto-Qr
-   ```
+Escanea el QR de la terminal con Expo Go (Android) o con la cámara (iPhone).
 
-2. **Instalar las dependencias del proyecto:**
-   ```bash
-   npm install
-   ```
+> **Si el teléfono no logra abrir el proyecto** (redes de empresa o universidad que bloquean conexiones entre dispositivos): inicia sesión con `npx expo login` (cuenta gratis de Expo, la misma en Expo Go) y usa `npx expo start --tunnel`.
 
-3. **Instalar/verificar módulos de Expo necesarios:**
-   ```bash
-   npx expo install expo-camera expo-linking
-   ```
+## Códigos para probar
 
-4. **Levantar la aplicación con Expo:**
-   ```bash
-   npx expo start
-   ```
-   *(Si el Wi-Fi de la red bloquea la conexión con el teléfono, usa `npx expo start --tunnel`).*
-
-5. **Abrir en el teléfono:**
-   * Abre **Expo Go** en tu teléfono y escanea el código QR que aparece en la terminal del computador
-
----
-
-## Códigos ficticios para pruebas
-
-| Código | Estado inicial | Comportamiento esperado |
+| Código | Estado inicial | Resultado esperado |
 | :--- | :--- | :--- |
-| `UTEM-2026-001` | Disponible | Primera lectura: **VALIDO**; segunda lectura: **YA_USADO** |
-| `UTEM-2026-002` | Disponible | Primera lectura: **VALIDO**; segunda lectura: **YA_USADO** |
-| `UTEM-2026-003` | Ya usado | Retorna **YA_USADO** desde el primer intento |
-| `UTEM-2026-004` | Disponible | Primera lectura: **VALIDO**; segunda lectura: **YA_USADO** |
-| `UTEM-2026-005` | Disponible | Primera lectura: **VALIDO**; segunda lectura: **YA_USADO** |
-| Cualquier otro texto | No registrado | Retorna **INVALIDO** |
-| `ERROR-TEST` | Simulación | Dispara excepción controlada hacia estado **ERROR** |
+| `UTEM-2026-001` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-002` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-003` | Ya usado | **YA USADA** desde el primer intento |
+| `UTEM-2026-004` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| `UTEM-2026-005` | Disponible | Primera vez **VÁLIDA**; segunda vez **YA USADA** |
+| Cualquier otro con formato válido | No registrado | **NO EXISTE** |
+| `ERROR-TEST` | Simulación | Falla controlada → **ERROR** |
 
----
+Los QR de prueba están en `entradas-prueba.html`: ábrelo en el computador y escanéalos desde la pantalla. El botón **Reiniciar entradas de prueba** devuelve todo al estado inicial.
 
-## Medición de rendimiento y reinicio de pruebas
+## Medición
+La pantalla **Ver mediciones** registra automáticamente:
+* **Validar escaneando:** desde que la cámara está lista hasta ver el resultado.
+* **Validar digitando:** desde la primera tecla hasta ver el resultado.
+* **Carga de la cámara:** desde que se toca Escanear o Continuar hasta `onCameraReady`.
 
-* **Tiempo de carga de cámara (`onCameraReady`):** Se registra en milisegundos desde que se presiona **Continuar** en la pantalla de explicación hasta que se dispara `onCameraReady` en el teléfono físico durante **10 repeticiones**, calculando **promedio, mínimo y máximo** en la planilla de medición
-* **Reinicio de códigos en memoria:** Desde la pantalla inicial puedes restablecer el estado de las entradas de prueba sin reiniciar la aplicación
-* **Reinicio de permisos en el teléfono para repetir pruebas:**
-  * **Android:** *Ajustes → Aplicaciones → Expo Go → Permisos → Cámara*
-  * **iPhone:** *Ajustes → Expo Go → Cámara*
+Hacer 10 repeticiones de cada una en el teléfono físico y copiar promedio, mínimo y máximo a la planilla.
+
+## Repetir las pruebas del permiso
+* **Android:** Ajustes → Aplicaciones → Expo Go → Permisos → Cámara
+* **iPhone:** Ajustes → Expo Go → Cámara
+
+## Limitaciones conocidas
+* Las entradas viven en la memoria de un solo teléfono: dos porteros con teléfonos distintos no comparten qué entradas ya se usaron. Resolverlo requiere un servidor compartido.
+* El código de las entradas es secuencial (`001`, `002`…), así que se podría adivinar. En producción convendría un código aleatorio o firmado.
+* En iPhone, el primer rechazo ya es definitivo, por lo que el camino "denegado, se puede reintentar" solo se puede mostrar en Android.
